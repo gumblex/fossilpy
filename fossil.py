@@ -109,7 +109,7 @@ def remove_clearsign(blob):
         return blob
     lines = []
     content = False
-    for k, ln in enumerate(blob):
+    for k, ln in enumerate(blob.splitlines(True)):
         if not ln.rstrip():
             content = True
         elif content:
@@ -171,7 +171,7 @@ class StructuralArtifact(Artifact):
         return cls(artifact.blob, artifact.rid, artifact.uuid)
 
     def parse(self):
-        f = io.BytesIO(self.blob)
+        f = io.BytesIO(remove_clearsign(self.blob))
         line = f.readline()
         while line:
             cmd, *toks = line.decode('utf-8').rstrip().split(' ')
