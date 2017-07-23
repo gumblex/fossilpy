@@ -228,14 +228,14 @@ class Repo:
         self.db.row_factory = sqlite3.Row
         self.check = check
 
-    def artifact(self, id_, type_=None):
+    def artifact(self, key, type_=None):
         '''Get an artifact by rid or uuid'''
-        if isinstance(id_, int):
+        if isinstance(key, int):
             kwd = 'rid'
-            val = id_
+            val = key
         else:
             kwd = 'uuid'
-            val = id_
+            val = key
         blob = None
         for rid, uuid, content in self.execute(
             "WITH RECURSIVE b(rid, uuid, content, depth) AS ("
@@ -258,10 +258,27 @@ class Repo:
         else:
             return Artifact(blob, rid, uuid)
 
+    def __getitem__(self, key):
+        return self.artifact(key)
+
+    def file(self, key):
+        return self.artifact(key, 'file')
+
+    def manifest(self, key):
+        return self.artifact(key, 'structural')
+
     def find_artifact(self, prefix):
         row = self.execute('SELECT rid, uuid FROM blob WHERE uuid LIKE ?',
               (prefix+'%',)).fetchone()
         return row
+
+    def artifact_uuid(self, rid):
+        row = self.execute('SELECT uuid FROM blob WHERE rid = ?',
+              (rid,)).fetchone()
+        if row:
+            return row[0]
+        else:
+            raise IndexError('rid %d not found' % rid)
 
     def execute(self, sql, parameters=None):
         return self.db.cursor().execute(sql, parameters)
