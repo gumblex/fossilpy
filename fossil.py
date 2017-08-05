@@ -250,7 +250,7 @@ class Repo:
             else:
                 blob = decompress(content)
         if not blob:
-            raise ValueError("can't find artifact: %s" % id_)
+            raise ValueError("can't find artifact: %s" % rid)
         if type_ == 'structural':
             return StructuralArtifact(blob, rid, uuid)
         elif type_ == 'file':
@@ -270,15 +270,23 @@ class Repo:
     def find_artifact(self, prefix):
         row = self.execute('SELECT rid, uuid FROM blob WHERE uuid LIKE ?',
               (prefix+'%',)).fetchone()
-        return row
+        return tuple(row)
 
-    def artifact_uuid(self, rid):
+    def to_uuid(self, rid):
         row = self.execute('SELECT uuid FROM blob WHERE rid = ?',
               (rid,)).fetchone()
         if row:
             return row[0]
         else:
             raise IndexError('rid %d not found' % rid)
+
+    def to_rid(self, uuid):
+        row = self.execute('SELECT rid FROM blob WHERE uuid = ?',
+              (uuid,)).fetchone()
+        if row:
+            return row[0]
+        else:
+            raise IndexError('uuid %s not found' % uuid)
 
     def execute(self, sql, parameters=None):
         return self.db.cursor().execute(sql, parameters)
