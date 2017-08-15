@@ -15,6 +15,8 @@ utf8_decode = lambda b: b.decode('utf-8')
 text_escape = lambda s: s.replace('\\', '\\\\').replace(' ', '\\s').replace('\n', '\\n')
 text_unescape = lambda s: s.replace('\\s', ' ').replace('\\n', '\n').replace('\\\\', '\\')
 parse_dt = lambda s: calendar.timegm(time.strptime(s[:19], '%Y-%m-%dT%H:%M:%S'))
+julian_to_unix = lambda t: (t-2440587.5)*86400
+unix_to_julian = lambda t: t/86400 + 2440587.5
 
 def base64_putint(v):
     zdigits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~"
