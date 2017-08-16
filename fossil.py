@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import io
-import sys
 import time
 import zlib
 import struct
 import sqlite3
 import calendar
+import collections
 
 unsigned_to_signed = lambda v: v-0x100000000 if v & 0x80000000 else v
 utf8_decode = lambda b: b.decode('utf-8')
@@ -124,6 +123,34 @@ def remove_clearsign(blob):
     return b''.join(lines)
 
 
+class LRUCache(collections.UserDict):
+    def __init__(self, maxlen):
+        self.capacity = maxlen
+        self.data = collections.OrderedDict()
+
+    def __getitem__(self, key):
+        value = self.data.pop(key)
+        self.data[key] = value
+        return value
+
+    def get(self, key, default=None):
+        try:
+            value = self.data.pop(key)
+            self.data[key] = value
+            return value
+        except KeyError:
+            return default
+
+    def __setitem__(self, key, value):
+        if self.capacity:
+            try:
+                self.data.pop(key)
+            except KeyError:
+                if len(self.data) >= self.capacity:
+                    self.data.popitem(last=False)
+            self.data[key] = value
+
+
 class Artifact:
     def __init__(self, blob=None, rid=None, uuid=None):
         self.blob = blob
@@ -224,11 +251,12 @@ class StructuralArtifact(Artifact):
 
 class Repo:
 
-    def __init__(self, repository, check=False):
+    def __init__(self, repository, check=False, cachesize=64):
         self.repository = repository
         self.db = sqlite3.connect(repository)
         self.db.row_factory = sqlite3.Row
         self.check = check
+        self.cache = LRUCache(cachesize)
 
     def artifact(self, key, type_=None):
         '''Get an artifact by rid or uuid'''
@@ -247,10 +275,14 @@ class Repo:
             "FROM blob, delta, b "
             "WHERE delta.rid = b.rid AND blob.rid = delta.srcid"
             ") SELECT rid, uuid, content FROM b ORDER BY depth" % kwd, (val,)):
-            if blob:
-                blob = delta_apply(blob, decompress(content), self.check)
+            if rid in self.cache:
+                blob = self.cache[rid]
             else:
-                blob = decompress(content)
+                if blob:
+                    blob = delta_apply(blob, decompress(content), self.check)
+                else:
+                    blob = decompress(content)
+                self.cache[rid] = blob
         if not blob:
             raise ValueError("can't find artifact: %s" % rid)
         if type_ == 'structural':
