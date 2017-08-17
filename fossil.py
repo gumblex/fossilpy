@@ -98,8 +98,9 @@ def delta_apply(blob, delta, check=False):
     if targetsize != len(buf):
         raise ValueError('delta decoding failed, size mismatch: %d, %d' %
                          (targetsize, len(buf)))
-    elif check and checksum != delta_checksum(buf):
-        raise ValueError('delta decoding failed, data mismatch')
+    elif check:
+        if checksum != delta_checksum(buf):
+            raise ValueError('delta decoding failed, data mismatch')
     return newblob.getvalue()
 
 
