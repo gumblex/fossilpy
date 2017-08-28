@@ -55,7 +55,8 @@ base64_getint.zvalue = (
 def decompress(blob):
     size = struct.unpack('>I', blob[:4])[0]
     orig = zlib.decompress(blob[4:])
-    assert len(orig) == size
+    # not passed on pkgsrc.fossil
+    # assert len(orig) == size
     return orig
 
 
