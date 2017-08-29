@@ -7,7 +7,16 @@ import zlib
 import struct
 import sqlite3
 import calendar
+import warnings
 import collections
+
+__version__ = '0.2'
+
+try:
+    import numpy
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
 
 unsigned_to_signed = lambda v: v-0x100000000 if v & 0x80000000 else v
 utf8_decode = lambda b: b.decode('utf-8')
@@ -60,14 +69,24 @@ def decompress(blob):
     return orig
 
 
-def delta_checksum(blob):
+if NUMPY_AVAILABLE:
+    def delta_checksum(blob):
+        dt = numpy.dtype(numpy.uint32)
+        dt = dt.newbyteorder('>')
+        m = len(blob) % 4
+        array = numpy.frombuffer(bytes(blob) + (b'\0' * (4-m)), dtype=dt)
+        return int(array.sum(dtype=dt))
+else:
     # can't calculate efficiently using native methods
-    import numpy
-    dt = numpy.dtype(numpy.uint32)
-    dt = dt.newbyteorder('>')
-    m = len(blob) % 4
-    array = numpy.frombuffer(bytes(blob) + (b'\0' * (4-m)), dtype=dt)
-    return int(array.sum(dtype=dt))
+    def delta_checksum(blob):
+        checksum = 0
+        uint32 = 4294967296
+        ints, m = divmod(len(blob), 4)
+        for i in range(ints):
+            checksum = (checksum + struct.unpack('>I', blob[i*4:i*4+4])[0]) % uint32
+        rem = bytes(blob[ints*4:]) + (b'\0' * (4-m))
+        checksum = (checksum + struct.unpack('>I', rem)[0]) % uint32
+        return checksum
 
 
 def delta_apply(blob, delta, check=False):
@@ -257,6 +276,8 @@ class Repo:
         self.repository = repository
         self.db = sqlite3.connect(repository)
         self.db.row_factory = sqlite3.Row
+        if check and not NUMPY_AVAILABLE:
+            warnings.warn('install numpy to calculate checksum faster')
         self.check = check
         self.cache = LRUCache(cachesize)
 
@@ -306,7 +327,10 @@ class Repo:
     def find_artifact(self, prefix):
         row = self.execute('SELECT rid, uuid FROM blob WHERE uuid LIKE ?',
               (prefix+'%',)).fetchone()
-        return tuple(row)
+        if row:
+            return tuple(row)
+        else:
+            raise KeyError("can't find a blob with prefix " + prefix)
 
     def to_uuid(self, rid):
         row = self.execute('SELECT uuid FROM blob WHERE rid = ?',
