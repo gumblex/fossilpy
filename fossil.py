@@ -195,6 +195,9 @@ class StructuralArtifact(Artifact):
         'D': 'datetime',
         'E': 'technote',
         'F': 'file',
+        'G': 'thread_root',
+        'H': 'thread_title',
+        'I': 'in_reply_to',
         'J': 'ticket_change',
         'K': 'ticket_id',
         'L': 'wiki_title',
@@ -227,9 +230,9 @@ class StructuralArtifact(Artifact):
             cmd, *toks = line.decode('utf-8').rstrip().split(' ')
             if cmd in 'AFJT':
                 val = tuple(map(text_unescape, toks))
-            elif cmd in 'BKMNRZ':
+            elif cmd in 'BGIKMNRZ':
                 val = toks[0]
-            elif cmd in 'CLU':
+            elif cmd in 'CHLU':
                 val = text_unescape(toks[0])
             elif cmd == 'D':
                 val = parse_dt(toks[0])
