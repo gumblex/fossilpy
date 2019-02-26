@@ -10,7 +10,7 @@ import calendar
 import warnings
 import collections
 
-__version__ = '0.2'
+__version__ = '0.3'
 
 try:
     import numpy
@@ -279,6 +279,7 @@ class Repo:
         self.repository = repository
         self.db = sqlite3.connect(repository)
         self.db.row_factory = sqlite3.Row
+        self.db.execute('PRAGMA case_sensitive_like=1')
         if check and not NUMPY_AVAILABLE:
             warnings.warn('install numpy to calculate checksum faster')
         self.check = check
