@@ -17,6 +17,8 @@ So using raw SQL (``Repo.execute``) may be necessary to get more information.
 
 Writing, committing, or executing Fossil commands is not supported. (Although you can do SQL, writing is not recommended.) Reading the config database (~/.fossil), the checkout database (_FOSSIL_), or the checkout directory is also not supported.
 
+Install `python-fossil-delta` for better performance.
+
 API
 ---
 

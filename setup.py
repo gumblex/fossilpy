@@ -32,5 +32,5 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
     ],
     keywords='fossil',
-    extras_require={'checksum':  ["numpy"]}
+    extras_require={'checksum':  ["numpy"], 'cffi': ['python-fossil-delta']}
 )

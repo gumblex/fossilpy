@@ -10,7 +10,7 @@ import calendar
 import warnings
 import collections
 
-__version__ = '0.3'
+__version__ = '0.3.1'
 
 try:
     import numpy
@@ -89,39 +89,45 @@ else:
         return checksum
 
 
-def delta_apply(blob, delta, check=False):
-    newblob = io.BytesIO()
-    mblob = memoryview(blob)
-    mdelta = memoryview(delta)
-    targetsize, pos = base64_getint(mdelta)
-    pos += 1 # \n
-    while pos < len(delta):
-        num, pos = base64_getint(mdelta, pos)
-        op = mdelta[pos]
-        if op == 64: # @
-            pos += 1
-            offset, pos = base64_getint(mdelta, pos)
-            pos += 1 # ,
-            newblob.write(mblob[offset:offset+num])
-        elif op == 58: # :
-            pos += 1
-            newblob.write(mdelta[pos:pos+num])
-            pos += num
-        elif op == 59: # ;
-            checksum = num
-            break
+try:
+    from fossil_delta import apply_delta as _apply_delta
+    def delta_apply(blob, delta, check=False):
+        return _apply_delta(blob, delta)
+
+except ImportError:
+    def delta_apply(blob, delta, check=False):
+        newblob = io.BytesIO()
+        mblob = memoryview(blob)
+        mdelta = memoryview(delta)
+        targetsize, pos = base64_getint(mdelta)
+        pos += 1 # \n
+        while pos < len(delta):
+            num, pos = base64_getint(mdelta, pos)
+            op = mdelta[pos]
+            if op == 64: # @
+                pos += 1
+                offset, pos = base64_getint(mdelta, pos)
+                pos += 1 # ,
+                newblob.write(mblob[offset:offset+num])
+            elif op == 58: # :
+                pos += 1
+                newblob.write(mdelta[pos:pos+num])
+                pos += num
+            elif op == 59: # ;
+                checksum = num
+                break
+            else:
+                raise ValueError('invalid delta encoding')
         else:
             raise ValueError('invalid delta encoding')
-    else:
-        raise ValueError('invalid delta encoding')
-    buf = newblob.getbuffer()
-    if targetsize != len(buf):
-        raise ValueError('delta decoding failed, size mismatch: %d, %d' %
-                         (targetsize, len(buf)))
-    elif check:
-        if checksum != delta_checksum(buf):
-            raise ValueError('delta decoding failed, data mismatch')
-    return newblob.getvalue()
+        buf = newblob.getbuffer()
+        if targetsize != len(buf):
+            raise ValueError('delta decoding failed, size mismatch: %d, %d' %
+                             (targetsize, len(buf)))
+        elif check:
+            if checksum != delta_checksum(buf):
+                raise ValueError('delta decoding failed, data mismatch')
+        return newblob.getvalue()
 
 
 def remove_clearsign(blob):
